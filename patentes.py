@@ -2,8 +2,6 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import skimage
-
-
 #Patentes 29.4 x 12.9
 def imshow(img, new_fig=True, title=None, color_img=False, blocking=False, colorbar=True, ticks=False):
     if new_fig:
@@ -44,7 +42,6 @@ def images_gris(imgs_bgr):
     for img in imgs_bgr:
         imagenes.append(cv2.cvtColor(img,cv2.COLOR_BGR2GRAY))
     return imagenes
-
 def umbralice(imagen_gris, min = 125,max =255, tipo = "THRESH_BINARY"):
     """
     Recibe una imagen en escala de grises y devuelve la imagen umbralizada
@@ -54,7 +51,7 @@ def umbralice(imagen_gris, min = 125,max =255, tipo = "THRESH_BINARY"):
     else:
         _, imagen_auto_gris = cv2.threshold(imagen_gris, min, max,cv2.THRESH_BINARY_INV)
     return imagen_auto_gris
-################## otra cosa
+#
 paths = get_images(image_paths())
 grises = images_gris(paths)
 gri = grises[0]
@@ -71,13 +68,13 @@ for i in range(len(grises)):
     cleaned = cv2.morphologyEx(imagen_umbralizada, cv2.MORPH_CLOSE, kernel, iterations=1)
     # cleaned = 255 - cleaned
     # edges = cv2.Canny(imagen_blurreada, 200, 350)
+    ###Muestra de Imagen umbralizada y original
     # plt.figure()
     # ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(grises[i],cmap = 'gray'), plt.title('Imagen en escala de grises')
     # plt.subplot(242,sharex=ax1,sharey=ax1), plt.imshow(imagen_umbralizada, cmap="gray"), plt.title('Imagen Umbralizada')
-    # plt.subplot(243,sharex=ax1,sharey=ax1), plt.imshow(cleaned, cmap="gray"), plt.title('Canny')
+    # plt.subplot(243,sharex=ax1,sharey=ax1), plt.imshow(cleaned, cmap="gray"), plt.title('Cleaned')
     # plt.show(block=False)
     num_labels, labels, stats, centroids =  cv2.connectedComponentsWithStats(cleaned, connectivity=8)
-    # num_labels2, labels2, stats2, centroids2 =  cv2.connectedComponentsWithStats(edges, connectivity=8)
     binary_mask = np.zeros_like(labels, dtype=np.uint8)
     # Recorremos cada etiqueta y dibujamos las regiones en la máscara binaria
     for label in range(1, num_labels):  # Empezar desde 1 para ignorar el fondo
@@ -86,13 +83,11 @@ for i in range(len(grises)):
     # plt.show()
     # plt.figure()
     # ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(labels,cmap = 'gray'), plt.title('Componentes de umbralizada')
-    # plt.subplot(242,sharex=ax1,sharey=ax1), plt.imshow(labels2, cmap="gray"), plt.title('Componentes canny')
     # plt.show(block=False)
     contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Draw contours and bounding boxes to visualize
     output_image = cv2.cvtColor(grises[i], cv2.COLOR_GRAY2BGR)
-    # Filter contours based on area
-    min_area = 150  # Set a minimum area threshold to remove small noise
+    # Filtro contornos en base a area, altura, ancho y aspect ratio
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         if 100 <= cv2.contourArea(contour) <=  2500 and w < 200 and 10 < h < 45 and np.isclose(w/h,aspect_ratio,atol = 0.7): #and 0 < w < 75 and 0 < h < 35:#30 ,  and 1 < w < 30 and 1 < h < 6 
@@ -100,18 +95,18 @@ for i in range(len(grises)):
             diccionario_posibles_patentes[i].append(grises[i][y : y + h, x: x + w])
     # Show the result
     # plt.figure()
-    # ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(output_image,cmap = 'gray'), plt.title('Componentes de umbralizada')
+    # ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(output_image,cmap = 'gray'), plt.title('Contornos')
     # plt.subplot(242,sharex=ax1,sharey=ax1), plt.imshow(binary_mask, cmap="gray"), plt.title('Mask')
     # plt.show(block=False)
 
 valid_components = {i: [] for i in range(len(grises))}
 for keys,value in diccionario_posibles_patentes.items():
     for region in range(len(value)):
-        _, binary_plate = cv2.threshold(value[region], 125, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        bin = binary_plate.copy()
-        binary_plate = skimage.segmentation.clear_border(binary_plate)
+        # _, binary_plate = cv2.threshold(value[region], 125, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # bin = binary_plate.copy()
+        # binary_plate = skimage.segmentation.clear_border(binary_plate)
         _ , thimg = cv2.threshold(value[region],121,255,cv2.THRESH_BINARY)#122
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))  # Use a larger kernel to connect nearby characters
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
         thimg = cv2.morphologyEx(thimg, cv2.MORPH_CLOSE, kernel,iterations=1)
         # thimg = cv2.dilate(thimg, kernel, iterations = 1)
         # thimg = skimage.segmentation.clear_border(thimg)
@@ -154,16 +149,15 @@ for keys,value in diccionario_posibles_patentes.items():
         # plt.show(block=False)
 no_detectadas=[]
 for i in range(len(valid_components)):
-    print(f"en el indice {i}:{len(valid_components[i])}")
+    # print(f"en el indice {i}:{len(valid_components[i])}")
     if len(valid_components[i]) != 6:
         valid_components[i]=[]
         no_detectadas.append(i)
-print(no_detectadas)
+# print(no_detectadas)
 
 
 diccionario_posibles_patentes_2 =  {i: [] for i in no_detectadas}
 for i in no_detectadas:
-    print(i)
     imagen = grises[i]
     _ , thimg = cv2.threshold(grises[i],120,255,cv2.THRESH_BINARY)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))  # Use a larger kernel to connect nearby characters
@@ -199,23 +193,23 @@ for i in no_detectadas:
         if 2 <= cv2.contourArea(contour) and 3 < h < 17 and 5 < w < 10 :
             cv2.rectangle(output_image2, (x, y), (x + w, y + h), (255, 0, 0), 2)
             diccionario_posibles_patentes_2[i].append((x, y, w, h))
-    plt.figure()
-    ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(output_image2,cmap = 'gray'), plt.title('Componentes de umbralizada')
-    plt.subplot(242,sharex=ax1,sharey=ax1), plt.imshow(thimg, cmap="gray"), plt.title('Mask')
-    plt.subplot(243,sharex=ax1,sharey=ax1), plt.imshow(binary_mask, cmap="gray"), plt.title('binary mask')
-    plt.subplot(244,sharex=ax1,sharey=ax1), plt.imshow(labels, cmap = 'gray'), plt.title('binary mask')
-    plt.show(block=False)
+    # plt.figure()
+    # ax1 = plt.subplot(241); plt.xticks([]), plt.yticks([]), plt.imshow(output_image2,cmap = 'gray'), plt.title('Componentes de umbralizada')
+    # plt.subplot(242,sharex=ax1,sharey=ax1), plt.imshow(thimg, cmap="gray"), plt.title('Mask')
+    # plt.subplot(243,sharex=ax1,sharey=ax1), plt.imshow(binary_mask, cmap="gray"), plt.title('binary mask')
+    # plt.subplot(244,sharex=ax1,sharey=ax1), plt.imshow(labels, cmap = 'gray'), plt.title('binary mask')
+    # plt.show(block=False)
 
 
-for key,value in diccionario_posibles_patentes_2.items():
-    print(f"{key}:{len(value)}")
-len(diccionario_posibles_patentes_2)
-prueba = diccionario_posibles_patentes_2[8]
-prueba = sorted(diccionario_posibles_patentes_2[8], key=lambda x: x[0])
+# for key,value in diccionario_posibles_patentes_2.items():
+#     print(f"{key}:{len(value)}")
+# len(diccionario_posibles_patentes_2)
+# prueba = diccionario_posibles_patentes_2[8]
+# prueba = sorted(diccionario_posibles_patentes_2[8], key=lambda x: x[0])
 
 contornos_caracteres = {i: [] for i in no_detectadas}
 for clave in no_detectadas:
-    possible_contours = sorted(diccionario_posibles_patentes_2[clave], key=lambda x: (x[0], x[1]))  # Sort by x, then by y
+    possible_contours = sorted(diccionario_posibles_patentes_2[clave], key=lambda x: (x[0], x[1]))  # Ordeno por x y despues y
     if len(possible_contours)>=6:
         selected_contours = []
         conteo=[]
@@ -234,28 +228,28 @@ for clave in no_detectadas:
                 if next_x - 100 < current_x < next_x + 100 and next_y - 30 < current_y < next_y + 30:
                     conteo.append(next_contour)
                 if len(conteo) == 6:
-                    found = True  # Set flag to True when we find 6 contours
-                    break  # Break out of the inner loop
+                    found = True  # Cambio bandera a True
+                    break  # Salgo del primer bucle
             if len(conteo) == 6:
-                print("Breakeo 2")
-                selected_contours = conteo  # Save the selected contours
+                # print("Breakeo 2")
+                selected_contours = conteo  # GUardo el contorno
                 contornos_caracteres[clave].append(conteo)
-                break  # Break out of the outer loop
+                break  # Salgo del segundo Bucle
 for clave,value in contornos_caracteres.items():
-    print("calve",clave)
+    # print("clave",clave)
     for i in range(len(value)):
-        print("i",i)
+        # print("i",i)
         for j in range(len(value[i])):
             x,y,w,h = value[i][j]
             valid_components[clave].append(grises[clave][y:y+h,x:x+w])
-            print(f"clave:{clave}\ni:{i}\nj:{j}")
+            # print(f"clave:{clave}\ni:{i}\nj:{j}")
             # valid = grises[clave][y:y+h,x:x+w]
             # plt.imshow(valid,cmap='gray')
             # plt.show()
     
 for key,value in valid_components.items():
     if len(value)!=6:
-        print(key)
+        print(f"Auto nro {key}: Patente No encontrada")
     else:
         # print(value)
         plt.figure()
